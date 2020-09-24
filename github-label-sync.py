@@ -24,7 +24,7 @@ if __name__ == "__main__":
         print("Start backup in "+args.backup)
 
     if args.restore:
-        print("Start backup in "+args.restore)
+        print("Start restore from "+args.restore)
 
     if args.sync:
         print("Sync started")
@@ -49,27 +49,44 @@ if __name__ == "__main__":
             print('No keys')
             exit(0)
 
-        if args.backup:
-            assert args.backup.endswith('json')
-            label_list=[]
-            for keys in repo_keys:
-                hub = glm.GithubLabelMaker(keys[2], keys[0], keys[1])
-                labels_def = hub.get_labels()
-                if labels_def:
-                    logging.info("dumping labels to '{0}'".format(args.backup))
-                    label_list.append(json.dumps(labels_def, indent=2))
-                else:
-                    logging.info("no labels found")
+    if args.backup:
+        assert args.backup.endswith('json')
+        label_list = []
+        for keys in repo_keys:
+            hub = glm.GithubLabelMaker(keys[2], keys[0], keys[1])
+            labels_def = hub.get_labels()
+            if labels_def:
+                logging.info("dumping labels to '{0}'".format(args.backup))
+                label_list.append(json.dumps(labels_def, indent=2))
+            else:
+                logging.info("no labels found")
 
-            with open(args.backup, 'w', encoding='utf-8') as f:
-                merged_dict=[]
-                for val in label_list:
-                     for k in json.loads(val):
-                         print(k['name'])
-                         if k not in merged_dict:
-                            merged_dict.append(k)
-                print(merged_dict)
-                f.write(json.dumps(merged_dict))
+        #Merge array of JSON and save
+        with open(args.backup, 'w', encoding='utf-8') as f:
+            merged_dict = []
+            for val in label_list:
+                for k in json.loads(val):
+                    print(k['name'])
+                    if k not in merged_dict:
+                        merged_dict.append(k)
+            print(merged_dict)
+            f.write(json.dumps(merged_dict, indent=2))
+
+    if args.restore:
+        logging.info("creating labels from '%s'", args.restore)
+        assert os.path.isfile(args.restore)
+        labels_def_files = [args.restore]
+        for labels_file in labels_def_files:
+            with open(labels_file, 'r') as f:
+                labels_def = json.load(f)
+                for keys in repo_keys:
+                    hub = glm.GithubLabelMaker(keys[2], keys[0], keys[1])
+                    hub.clear()
+                    for label_def in labels_def:
+                        if label_def['description']==None:
+                            label_def['description'] = ''
+                        print(label_def)
+                        hub.add_label(label_def)
 
 
 print("Finish file")
